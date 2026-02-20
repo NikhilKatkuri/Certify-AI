@@ -30,6 +30,7 @@ interface SuperContextType {
   isProcessing: boolean;
   verificationResult: VerificationResult | null;
   error: string | null;
+  progressSteps: ProgressStep[];
 }
 
 interface VerificationResult {
@@ -47,6 +48,13 @@ interface VerificationResult {
   certificate_id?: string;
   signatory_name?: string;
   signatory_title?: string;
+}
+
+interface ProgressStep {
+  id: string;
+  label: string;
+  status: "pending" | "running" | "completed" | "error";
+  message?: string;
 }
 
 const BACKEND_URL =
@@ -96,6 +104,43 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
   const [verificationResult, setVerificationResult] =
     useState<VerificationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [progressSteps, setProgressSteps] = useState<ProgressStep[]>([
+    { id: "ocr", label: "Extract Text (OCR)", status: "pending" },
+    { id: "parse", label: "Parse Certificate Data", status: "pending" },
+    { id: "university", label: "Verify University", status: "pending" },
+    { id: "student", label: "Verify Student", status: "pending" },
+    { id: "course", label: "Verify Course", status: "pending" },
+    { id: "score", label: "Calculate Final Score", status: "pending" },
+  ]);
+
+  /**
+   * Update progress step status
+   */
+  const updateProgressStep = (
+    stepId: string,
+    status: "pending" | "running" | "completed" | "error",
+    message?: string,
+  ) => {
+    setProgressSteps((prev) =>
+      prev.map((step) =>
+        step.id === stepId ? { ...step, status, message } : step,
+      ),
+    );
+  };
+
+  /**
+   * Reset progress steps
+   */
+  const resetProgressSteps = () => {
+    setProgressSteps([
+      { id: "ocr", label: "Extract Text (OCR)", status: "pending" },
+      { id: "parse", label: "Parse Certificate Data", status: "pending" },
+      { id: "university", label: "Verify University", status: "pending" },
+      { id: "student", label: "Verify Student", status: "pending" },
+      { id: "course", label: "Verify Course", status: "pending" },
+      { id: "score", label: "Calculate Final Score", status: "pending" },
+    ]);
+  };
   /**
    * Handle file selection
    */
@@ -123,21 +168,30 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
 
     setIsProcessing(true);
     setError(null);
+    resetProgressSteps();
 
     try {
       console.log("Processing file:", file.name);
 
       // Step 1: Extract text from image
+      updateProgressStep("ocr", "running");
       const extractedText = await extractTextFromImage(file);
+      updateProgressStep("ocr", "completed");
       console.log("Text extracted successfully");
 
       // Step 2: Verify with backend
+      updateProgressStep("parse", "running");
       await getVerificationResult(extractedText);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Processing failed";
       setError(errorMessage);
       console.error("Processing Error:", error);
+      // Mark the current step as error
+      const runningStep = progressSteps.find((s) => s.status === "running");
+      if (runningStep) {
+        updateProgressStep(runningStep.id, "error", errorMessage);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -250,6 +304,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
     extractedText: string,
   ): Promise<number> => {
     try {
+      updateProgressStep("parse", "running");
       const response = await axios.post(
         `${BACKEND_URL}${VERIFICATION_ENDPOINT}`,
         {
@@ -269,20 +324,25 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
         verificationData = JSON.parse(verificationData.result);
       }
 
+      updateProgressStep("parse", "completed");
       let currentScore = 100;
       setVerificationResult(verificationData);
 
       // Check university
+      updateProgressStep("university", "running");
       const university = await getUniversity(
         verificationData.issuing_organization || "",
       );
 
       if (!university) {
         currentScore -= 20;
-        setError("University not recognized by system");
+        updateProgressStep("university", "completed", "Not found in system");
+      } else {
+        updateProgressStep("university", "completed");
       }
 
       // Check student
+      updateProgressStep("student", "running");
       const student = await getStudent({
         uid: university?.uid || "",
         name: verificationData.student_name || "",
@@ -290,10 +350,13 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
 
       if (!student) {
         currentScore -= 20;
-        setError("Student not found in university records");
+        updateProgressStep("student", "completed", "Not found in records");
+      } else {
+        updateProgressStep("student", "completed");
       }
 
       // Check course
+      updateProgressStep("course", "running");
       const course = await getCourse({
         uid: university?.uid || "",
         sid: student?.sid || "",
@@ -302,10 +365,16 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
 
       if (!course) {
         currentScore -= 20;
-        setError("Course not found in student's enrollment");
+        updateProgressStep("course", "completed", "Not enrolled in course");
+      } else {
+        updateProgressStep("course", "completed");
       }
 
+      // Calculate score
+      updateProgressStep("score", "running");
       setScore(currentScore);
+      updateProgressStep("score", "completed", `Score: ${currentScore}%`);
+
       console.log("Verification Result:", verificationData);
       console.log("Final Score:", currentScore);
 
@@ -314,6 +383,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to verify certificate";
       setError(errorMessage);
+      updateProgressStep("parse", "error", errorMessage);
       console.error("Verification Error:", err);
       throw new Error(errorMessage);
     }
@@ -334,6 +404,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
     isProcessing,
     verificationResult,
     error,
+    progressSteps,
   };
 
   return (
