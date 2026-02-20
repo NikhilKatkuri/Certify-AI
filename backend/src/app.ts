@@ -5,6 +5,7 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
+import dataSetRouter from './routes/data_set';
 
 const { NODE_ENV, CLIENT_URL } = process.env;
 const isProduction = NODE_ENV === 'production';
@@ -49,6 +50,8 @@ app.get('/', (_req, res) => {
 app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', uptime: process.uptime() });
 });
+
+app.get('/data_set', dataSetRouter);
 
 // 404 handler for unmatched routes
 app.use((_req, res) => {

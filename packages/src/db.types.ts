@@ -19,14 +19,12 @@ interface Student {
   enrolledCourseUids: string[];
 }
 
-interface Student {
-  sid: string;
-  uid: string; // belongs to which university
+interface Course {
+  cid: string;
+  uid: string; // which university offers this
 
   name: string;
-  rollNumber: string;
-
-  enrolledCourseUids: string[];
+  duration?: string;
 }
 
-export type { University, Student };
+export type { University, Student, Course };
