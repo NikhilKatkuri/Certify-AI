@@ -57,6 +57,7 @@
       "@/routes/*": ["src/routes/*"],
       "@/controllers/*": ["src/controllers/*"],
       "@/config/*": ["src/config/*"],
+      "@shared/*": ["../packages/*"],
       "@/*": ["src/*"]
     }
   },
