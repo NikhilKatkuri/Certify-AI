@@ -40,7 +40,7 @@ app.use(
 // Routes
 app.get('/', (_req, res) => {
   res.status(200).json({
-    message: 'LinkFlow Server is running!',
+    message: 'Certify AI Server is running!',
     environment: isProduction ? 'production' : 'development',
     timestamp: new Date().toISOString(),
   });
@@ -51,7 +51,7 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', uptime: process.uptime() });
 });
 
-app.get('/data_set', dataSetRouter);
+app.use('/data_set', dataSetRouter);
 
 // 404 handler for unmatched routes
 app.use((_req, res) => {
