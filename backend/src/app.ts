@@ -6,6 +6,8 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import dataSetRouter from './routes/data_set';
+import ErrorHandler from './helpers/error';
+import challengeRouter from './routes/challenge';
 
 const { NODE_ENV, CLIENT_URL } = process.env;
 const isProduction = NODE_ENV === 'production';
@@ -51,8 +53,8 @@ app.get('/health', (_req, res) => {
   res.status(200).json({ status: 'OK', uptime: process.uptime() });
 });
 
-app.use('/data_set', dataSetRouter);
-
+app.use('/data_set', ErrorHandler(dataSetRouter));
+app.use('/api/v1/challenge', ErrorHandler(challengeRouter));
 // 404 handler for unmatched routes
 app.use((_req, res) => {
   res.status(404).json({ error: 'Route not found' });

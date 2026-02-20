@@ -1,5 +1,5 @@
 import { Schema, model } from 'mongoose';
-import type { University, Student, Course } from '@certify-ai/db-types';
+import type { University, Student, Course } from '../types/db.types';
 
 // University Schema
 const universitySchema = new Schema<University>(
