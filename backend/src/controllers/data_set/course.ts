@@ -15,4 +15,27 @@ const UploadCourse = async (req: Request, res: Response) => {
   res.status(201).json({ message: 'Course uploaded successfully' });
 };
 
-export { UploadCourse };
+const ReadCourse = async (req: Request, res: Response) => {
+  const { uid, cid } = req.body as { uid: string; cid: string };
+  if (!uid) {
+    res.status(400).json({ error: 'UID is required' });
+    return;
+  }
+
+  if (!cid) {
+    res.status(400).json({ error: 'CID is required' });
+    return;
+  }
+
+  const course = await CourseModel.findOne({ uid, cid });
+
+  if (!course) {
+    res
+      .status(404)
+      .json({ error: 'Course not found', course: null, exist: false });
+    return;
+  }
+  res.status(200).json({ message: 'Course found', course, exist: true });
+};
+
+export { UploadCourse, ReadCourse };
