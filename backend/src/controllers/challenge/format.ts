@@ -55,7 +55,26 @@ const FormatChallenge = async (req: Request, res: Response) => {
 
   console.log('Performance Metrics:', performanceMetrics);
 
-  res.status(200).json({ result: data.message.content });
+  // Parse the AI response as JSON
+  const aiResponse = JSON.parse(data.message.content);
+
+  res.status(200).json({
+    ...aiResponse,
+    document_type: aiResponse.document_type || undefined,
+    issuing_organization: aiResponse.issuing_organization || undefined,
+    organization_type: aiResponse.organization_type || undefined,
+    student_name: aiResponse.student_name || undefined,
+    roll_number: aiResponse.roll_number || undefined,
+    registration_number: aiResponse.registration_number || undefined,
+    course_name: aiResponse.course_name || undefined,
+    degree_name: aiResponse.degree_name || undefined,
+    issue_date: aiResponse.issue_date || undefined,
+    completion_date: aiResponse.completion_date || undefined,
+    grade_or_score: aiResponse.grade_or_score || undefined,
+    certificate_id: aiResponse.certificate_id || undefined,
+    signatory_name: aiResponse.signatory_name || undefined,
+    signatory_title: aiResponse.signatory_title || undefined,
+  });
 };
 
 export default FormatChallenge;

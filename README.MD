@@ -108,6 +108,20 @@ pnpm start
 - `pnpm type-check` - Run TypeScript type checking
 - `pnpm lint` - Run full linting (type-check + prettier)
 
+## Recent Updates (v1.1.0)
+
+### Backend Improvements
+- **Fixed JSON Response Parsing**: Enhanced `format.ts` to properly parse and structure AI responses with all certificate fields
+- **Consistent API Responses**: Updated all verification endpoints (`findUniversity`, `findStudent`, `findCourse`) to return consistent response structures with `exists` field
+- **Proper HTTP Status Codes**: Added correct status codes (200 for success, 404 for not found) across all endpoints
+
+### Frontend Enhancements
+- **Enhanced Context Management**: Extended `SuperContext` to expose `score`, `isProcessing`, `verificationResult`, and `error` states
+- **Improved Error Handling**: Functions now gracefully handle errors with proper state management instead of throwing exceptions
+- **Better User Feedback**: Added loading state and error messages during certificate verification process
+- **Input Validation**: Added validation checks to prevent empty inputs in API calls
+- **Response Data Storage**: Properly stores and tracks verification results throughout the process
+
 ## API Documentation
 
 For detailed API documentation, see [docs/](docs/) directory.
