@@ -1,4 +1,10 @@
 packages:
-  - "backend"
-  - "packages"
-  - "client"
+  - backend
+  - packages
+  - client
+
+ignoredBuiltDependencies:
+  - esbuild
+  - sharp
+  - tesseract.js
+  - unrs-resolver
