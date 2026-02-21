@@ -70,7 +70,18 @@ const FormatChallenge = async (req: Request, res: Response) => {
     // Parse the AI response as JSON with error handling
     let aiResponse;
     try {
-      aiResponse = JSON.parse(data.message.content);
+      // Clean the response content to remove markdown code blocks
+      let cleanedContent = data.message.content.trim();
+
+      // Remove markdown code block syntax (```json or ``` at start and ``` at end)
+      if (cleanedContent.startsWith('```')) {
+        // Remove opening code fence
+        cleanedContent = cleanedContent.replace(/^```(?:json)?\s*\n?/, '');
+        // Remove closing code fence
+        cleanedContent = cleanedContent.replace(/\n?```\s*$/, '');
+      }
+
+      aiResponse = JSON.parse(cleanedContent.trim());
     } catch (parseError) {
       console.error('Failed to parse AI response:', data.message.content);
       console.error('Parse error:', parseError);
