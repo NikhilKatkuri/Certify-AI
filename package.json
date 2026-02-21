@@ -6,6 +6,10 @@
     "client": "cd client && npm start",
     "server": "cd backend && npm run dev",
     "llm": "cd llm && npm run dev",
+    "install:client": "cd client && pnpm install",
+    "install:server": "cd backend && pnpm install",
+    "install:llm": "cd llm && pnpm install",
+    "install:all": "pnpm run install:client && pnpm run install:server && pnpm run install:llm",
     "dev": "concurrently -n client,server,llm -c cyan,magenta,yellow \"npm run client\" \"npm run server\" \"npm run llm\""
   },
   "keywords": [],
