@@ -5,7 +5,13 @@ const findUniversity = async (req: Request, res: Response) => {
   const { input } = req.body as { input: string };
 
   const foundUniversities = await UniversityModel.findOne({
-    name: { $regex: new RegExp(input, 'i') },
+    $expr: {
+      $regexMatch: {
+        input: input, // The long string from the user
+        regex: '$recognizedName', // The short string in your DB
+        options: 'i',
+      },
+    },
   });
 
   if (foundUniversities) {

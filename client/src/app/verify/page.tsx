@@ -13,6 +13,10 @@ export default function Verfiy() {
     processImage,
     isProcessing,
     progressSteps,
+    score,
+    verificationResult,
+    getRiskLevel,
+    error,
   } = useSuper();
 
   return (
@@ -76,6 +80,105 @@ export default function Verfiy() {
                 {isProcessing ? "Processing..." : "Process File"}
               </button>
             </div>
+
+            {/* Results Display */}
+            {verificationResult && !isProcessing && (
+              <div className="w-full mt-6 p-6 border border-gray-200 dark:border-gray-700 rounded-xl bg-gradient-to-br from-white to-gray-50 dark:from-gray-900 dark:to-gray-800">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-semibold text-black dark:text-white mb-2">
+                    Verification Complete
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Certificate analysis results
+                  </p>
+                </div>
+
+                {/* Confidence Score Display */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                      Confidence Score
+                    </span>
+                    <span className="text-2xl font-bold text-black dark:text-white">
+                      {score === 0 ? "N/A" : `${score}%`}
+                    </span>
+                  </div>
+
+                  {/* Progress bar for confidence */}
+                  {score > 0 && (
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3">
+                      <div
+                        className={`h-3 rounded-full transition-all duration-500 ${
+                          score < 40
+                            ? "bg-red-600"
+                            : score < 70
+                              ? "bg-yellow-500"
+                              : "bg-green-600"
+                        }`}
+                        style={{ width: `${score}%` }}
+                      ></div>
+                    </div>
+                  )}
+
+                  {/* Risk Level Badge */}
+                  <div className="flex justify-center mt-3">
+                    <div
+                      className={`inline-flex items-center px-4 py-2 rounded-full border-2 font-semibold text-sm ${getRiskLevel(score).color}`}
+                    >
+                      {getRiskLevel(score).label}
+                    </div>
+                  </div>
+
+                  {/* Manual Verification Warning */}
+                  {score === 0 && error && (
+                    <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800 font-medium">
+                        {error}
+                      </p>
+                      <p className="text-xs text-amber-700 mt-2">
+                        The system was unable to complete automatic
+                        verification. Please review the certificate manually or
+                        contact support.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Verification Details */}
+                <div className="space-y-2 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  {verificationResult.issuing_organization && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Institution:
+                      </span>
+                      <span className="font-medium text-black dark:text-white">
+                        {verificationResult.issuing_organization}
+                      </span>
+                    </div>
+                  )}
+                  {verificationResult.student_name && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Student:
+                      </span>
+                      <span className="font-medium text-black dark:text-white">
+                        {verificationResult.student_name}
+                      </span>
+                    </div>
+                  )}
+                  {verificationResult.course_name && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400">
+                        Course:
+                      </span>
+                      <span className="font-medium text-black dark:text-white">
+                        {verificationResult.course_name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </main>
       </div>

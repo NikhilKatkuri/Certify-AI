@@ -31,6 +31,11 @@ interface SuperContextType {
   verificationResult: VerificationResult | null;
   error: string | null;
   progressSteps: ProgressStep[];
+  getRiskLevel: (score: number) => {
+    level: string;
+    color: string;
+    label: string;
+  };
 }
 
 interface VerificationResult {
@@ -62,6 +67,39 @@ const BACKEND_URL =
 const OCR_LANGUAGE = "eng";
 const VERIFICATION_ENDPOINT = "/api/v1/challenge/data";
 
+/**
+ * Get risk level based on confidence score
+ */
+const getRiskLevel = (
+  score: number,
+): { level: string; color: string; label: string } => {
+  if (score === 0) {
+    return {
+      level: "MANUAL VERIFICATION REQUIRED",
+      color: "text-gray-600 bg-gray-50 border-gray-300",
+      label: "⚠️ Manual Verification Required",
+    };
+  } else if (score < 40) {
+    return {
+      level: "HIGH RISK",
+      color: "text-red-600 bg-red-50 border-red-200",
+      label: "⚠️ High Risk",
+    };
+  } else if (score < 70) {
+    return {
+      level: "CAUTION",
+      color: "text-yellow-600 bg-yellow-50 border-yellow-200",
+      label: "⚡ Caution",
+    };
+  } else {
+    return {
+      level: "SAFE",
+      color: "text-green-600 bg-green-50 border-green-200",
+      label: "✓ Safe",
+    };
+  }
+};
+
 // ============================================================================
 // Context Creation
 // ============================================================================
@@ -76,20 +114,15 @@ const SuperContext = createContext<SuperContextType | undefined>(undefined);
  * Extract text from image using OCR
  */
 const extractTextFromImage = async (file: File): Promise<string> => {
-  try {
-    const result = await Tesseract.recognize(file, OCR_LANGUAGE, {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
+  const result = await Tesseract.recognize(file, OCR_LANGUAGE, {
+    logger: (m) => {
+      if (m.status === "recognizing text") {
+        console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+      }
+    },
+  });
 
-    return result.data.text;
-  } catch (error) {
-    console.error("OCR Error:", error);
-    throw new Error("Failed to extract text from image");
-  }
+  return result.data.text;
 };
 
 // ============================================================================
@@ -110,7 +143,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
     { id: "university", label: "Verify University", status: "pending" },
     { id: "student", label: "Verify Student", status: "pending" },
     { id: "course", label: "Verify Course", status: "pending" },
-    { id: "score", label: "Calculate Final Score", status: "pending" },
+    { id: "score", label: "Calculate Confidence Score", status: "pending" },
   ]);
 
   /**
@@ -138,7 +171,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
       { id: "university", label: "Verify University", status: "pending" },
       { id: "student", label: "Verify Student", status: "pending" },
       { id: "course", label: "Verify Course", status: "pending" },
-      { id: "score", label: "Calculate Final Score", status: "pending" },
+      { id: "score", label: "Calculate Confidence Score", status: "pending" },
     ]);
   };
   /**
@@ -185,13 +218,35 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Processing failed";
-      setError(errorMessage);
       console.error("Processing Error:", error);
-      // Mark the current step as error
+
+      // Instead of showing error, mark as manual verification required
       const runningStep = progressSteps.find((s) => s.status === "running");
       if (runningStep) {
-        updateProgressStep(runningStep.id, "error", errorMessage);
+        updateProgressStep(
+          runningStep.id,
+          "completed",
+          "Verification incomplete",
+        );
       }
+
+      // Complete remaining steps with pending status message
+      progressSteps.forEach((step) => {
+        if (step.status === "pending") {
+          updateProgressStep(step.id, "completed", "Skipped");
+        }
+      });
+
+      // Set score to 0 for manual verification
+      updateProgressStep(
+        "score",
+        "completed",
+        "⚠️ Manual Verification Required",
+      );
+      setScore(0);
+      setError(
+        "Unable to complete automatic verification. Manual review required.",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -207,6 +262,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
       return null;
     }
     try {
+      console.log("Verifying university:", universityName);
       const response = await axios.post(
         `${BACKEND_URL}${VERIFICATION_ENDPOINT}/university`,
         {
@@ -314,14 +370,40 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
       );
 
       if (!response.data) {
-        throw new Error("No response from verification server");
+        console.error("No response from verification server");
+        updateProgressStep("parse", "completed", "Unable to parse data");
+        updateProgressStep("university", "completed", "Skipped");
+        updateProgressStep("student", "completed", "Skipped");
+        updateProgressStep("course", "completed", "Skipped");
+        updateProgressStep(
+          "score",
+          "completed",
+          "⚠️ Manual Verification Required",
+        );
+        setScore(0);
+        return 0;
       }
-
+      console.log("Verification response received:", response.data);
       let verificationData = response.data;
 
       // If response has a 'result' field with string, parse it
       if (typeof verificationData.result === "string") {
-        verificationData = JSON.parse(verificationData.result);
+        try {
+          verificationData = JSON.parse(verificationData.result);
+        } catch (parseError) {
+          console.error("Failed to parse response:", parseError);
+          updateProgressStep("parse", "completed", "Unable to parse data");
+          updateProgressStep("university", "completed", "Skipped");
+          updateProgressStep("student", "completed", "Skipped");
+          updateProgressStep("course", "completed", "Skipped");
+          updateProgressStep(
+            "score",
+            "completed",
+            "⚠️ Manual Verification Required",
+          );
+          setScore(0);
+          return 0;
+        }
       }
 
       updateProgressStep("parse", "completed");
@@ -360,7 +442,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
       const course = await getCourse({
         uid: university?.uid || "",
         sid: student?.sid || "",
-        name: verificationData.course_name || "",
+        name: verificationData.course_abberivation || "",
       });
 
       if (!course) {
@@ -370,22 +452,38 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
         updateProgressStep("course", "completed");
       }
 
-      // Calculate score
+      // Calculate confidence score
       updateProgressStep("score", "running");
       setScore(currentScore);
-      updateProgressStep("score", "completed", `Score: ${currentScore}%`);
+      const riskInfo = getRiskLevel(currentScore);
+      updateProgressStep(
+        "score",
+        "completed",
+        `Confidence: ${currentScore}% - ${riskInfo.level}`,
+      );
 
       console.log("Verification Result:", verificationData);
-      console.log("Final Score:", currentScore);
+      console.log("Confidence Score:", currentScore, "-", riskInfo.level);
 
       return currentScore;
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to verify certificate";
-      setError(errorMessage);
-      updateProgressStep("parse", "error", errorMessage);
       console.error("Verification Error:", err);
-      throw new Error(errorMessage);
+
+      // Instead of throwing, complete with manual verification required
+      updateProgressStep("parse", "completed", "Unable to verify");
+      updateProgressStep("university", "completed", "Skipped");
+      updateProgressStep("student", "completed", "Skipped");
+      updateProgressStep("course", "completed", "Skipped");
+      updateProgressStep(
+        "score",
+        "completed",
+        "⚠️ Manual Verification Required",
+      );
+      setScore(0);
+
+      return 0;
     }
   };
 
@@ -405,6 +503,7 @@ export const SuperProvider = ({ children }: { children: ReactNode }) => {
     verificationResult,
     error,
     progressSteps,
+    getRiskLevel,
   };
 
   return (
